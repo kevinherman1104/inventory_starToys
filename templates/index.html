@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+{% extends "base.html" %}
+{% block content %}
+<head>
+    <meta charset="UTF-8">
+    <title>Inventory Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+
+<body class="p-4">
+
+    <header class="mb-4 d-flex justify-content-between">
+        <h2>📦 Inventory System</h2>
+        <div>
+            <a href="{{ url_for('invoice') }}" class="btn btn-outline-primary">🧾 Invoice</a>
+        </div>
+    </header>
+
+    <!-- Search -->
+    <form method="get" class="mb-3 d-flex">
+        <input type="text" class="form-control me-2" name="q" placeholder="Search by ID, name, supplier, category..."
+            value="{{ search }}">
+        <button class="btn btn-primary">Search</button>
+    </form>
+
+    <!-- Add Button -->
+    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addModal">➕ Add Product</button>
+
+    <!-- Table -->
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Product ID</th>
+                <th>Name</th>
+                <th>Stock</th>
+                <th>Category</th>
+                <th>Supplier</th>
+                <th>Cost</th>
+                <th>Price</th>
+                <th>Image</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>{{ row.id }}</td>
+                <td>{{ row.product_id }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.stock }}</td>
+                <td>{{ row.category }}</td>
+                <td>{{ row.supplier }}</td>
+                <td>{{ row.cost_price }}</td>
+                <td>{{ row.selling_price }}</td>
+                <td>
+                    {% if row.image_url %}
+                    <img src="{{ row.image_url }}" class="img-thumbnail" style="max-width: 60px; cursor:pointer;"
+                        onclick="showImage('{{ row.image_url }}')">
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-warning btn-sm" data-row='{{ row|tojson|safe }}'
+                        onclick="fillEditForm(this)">Edit</button>
+
+                    <a href="{{ url_for('delete', item_id=row.id) }}" class="btn btn-sm btn-danger"
+                        onclick="return confirm('Delete this item?')">🗑️</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Image Modal -->
+    <div class="modal fade" id="imageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <img id="modalImage" src="" class="img-fluid">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="modal fade" id="addModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ url_for('add') }}" method="POST" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Product</h5>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" name="product_id" class="form-control mb-2" placeholder="Product ID"
+                            required>
+                        <input type="text" name="name" class="form-control mb-2" placeholder="Name" required>
+                        <input type="number" name="stock" class="form-control mb-2" placeholder="Stock" value="0">
+                        <input type="file" name="image_file" class="form-control mb-2">
+                        <input type="text" name="category" class="form-control mb-2" placeholder="Category">
+                        <input type="text" name="supplier" class="form-control mb-2" placeholder="Supplier">
+                        <input type="number" step="0.01" name="cost_price" class="form-control mb-2"
+                            placeholder="Cost Price">
+                        <input type="number" step="0.01" name="selling_price" class="form-control mb-2"
+                            placeholder="Selling Price">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-success">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="editForm" method="POST" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Product</h5>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="edit_id">
+                        <input type="text" name="product_id" id="edit_product_id" class="form-control mb-2" required>
+                        <input type="text" name="name" id="edit_name" class="form-control mb-2" required>
+                        <input type="number" name="stock" id="edit_stock" class="form-control mb-2">
+                        <input type="file" name="image_file" class="form-control mb-2">
+                        <input type="text" name="category" id="edit_category" class="form-control mb-2">
+                        <input type="text" name="supplier" id="edit_supplier" class="form-control mb-2">
+                        <input type="number" step="0.01" name="cost_price" id="edit_cost_price"
+                            class="form-control mb-2">
+                        <input type="number" step="0.01" name="selling_price" id="edit_selling_price"
+                            class="form-control mb-2">
+                        <input type="hidden" name="existing_image" id="edit_existing_image">
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-warning">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showImage(url) {
+            document.getElementById("modalImage").src = url;
+            new bootstrap.Modal(document.getElementById("imageModal")).show();
+        }
+
+        function fillEditForm(btn) {
+            const row = JSON.parse(btn.getAttribute("data-row"));
+
+            document.querySelector("#edit_product_id").value = row[1];
+            document.querySelector("#edit_name").value = row[2];
+            document.querySelector("#edit_stock").value = row[3];
+            document.querySelector("#edit_cost_price").value = row[7];
+            document.querySelector("#edit_selling_price").value = row[8];
+
+            // Open modal manually if needed
+            const modal = new bootstrap.Modal(document.getElementById("editModal"));
+            modal.show();
+        }
+    </script>
+
+</body>
+{% endblock %}
+</html>

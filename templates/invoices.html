@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoices</title>
+    <link rel="stylesheet"
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+</head>
+<body class="container py-4">
+    {% extends "base.html" %}
+    {% block content %}
+    <h1 class="mb-4">📑 Saved Invoices</h1>
+
+    <a href="{{ url_for('home') }}" class="btn btn-secondary mb-3">← Back to Inventory</a>
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>Invoice ID</th>
+                <th>Customer Name</th>
+                <th>Date</th>
+                <th>Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr>
+                <td>{{ inv.id }}</td>
+                <td>{{ inv.customer_name }}</td>
+                <td>{{ inv.created_at }}</td>
+                <td>${{ "%.2f"|format(inv.total or 0) }}</td>
+                <td>
+                    <a href="{{ url_for('invoice_detail', invoice_id=inv.id) }}" 
+                       class="btn btn-primary btn-sm">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endblock %}
+</body>
+</html>
