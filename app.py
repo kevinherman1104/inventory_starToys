@@ -6,6 +6,7 @@ from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from flask import send_file
+from werkzeug.utils import secure_filename
 import io
 
 
@@ -15,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = "your_secret_key"
 
 # Upload config
-UPLOAD_FOLDER = "static/uploads"
+UPLOAD_FOLDER = os.path.join("static", "uploads")
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
@@ -29,6 +30,15 @@ def process_image(file, filename):
     img.thumbnail((400, 400))   # resize (max 400x400)
     img.save(filepath, optimize=True, quality=80)  # compress quality 80
     return f"/static/uploads/{filename}"
+
+def v(file, filename):
+    # Ensure upload folder exists
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    filepath = os.path.join(filename)
+    file.save(filepath)
+    
+    # Store relative path for DB (to be used with url_for)
+    return f"uploads/{filename}"
 
 # Database connection
 def get_connection():
@@ -155,6 +165,7 @@ def delete(item_id):
     conn.commit()
     conn.close()
     return redirect(url_for("home"))
+
 
 #invoice func
 @app.route("/invoice")
@@ -345,28 +356,45 @@ def invoice_edit(invoice_id):
         customer_name = request.form.get("customer_name")
         cursor.execute("UPDATE invoices SET customer_name=%s WHERE id=%s", (customer_name, invoice_id))
 
-        # Update items (loop through form data)
+        # Handle existing items (update or delete)
         item_ids = request.form.getlist("item_id")
         quantities = request.form.getlist("quantity")
         prices = request.form.getlist("price")
+        remove_ids = request.form.getlist("remove_item")
 
         for i in range(len(item_ids)):
-            cursor.execute("""
-                UPDATE invoice_items 
-                SET quantity=%s, price=%s, subtotal=%s
-                WHERE id=%s
-            """, (
-                int(quantities[i]),
-                float(prices[i]),
-                int(quantities[i]) * float(prices[i]),
-                int(item_ids[i])
-            ))
+            item_id = int(item_ids[i])
+            if str(item_id) in remove_ids:
+                cursor.execute("DELETE FROM invoice_items WHERE id=%s", (item_id,))
+            else:
+                qty = int(quantities[i])
+                price = float(prices[i])
+                cursor.execute("""
+                    UPDATE invoice_items 
+                    SET quantity=%s, price=%s, subtotal=%s
+                    WHERE id=%s
+                """, (qty, price, qty * price, item_id))
+
+        # Handle new items
+        new_product_ids = request.form.getlist("new_product_id")
+        new_quantities = request.form.getlist("new_quantity")
+        new_prices = request.form.getlist("new_price")
+
+        for i in range(len(new_product_ids)):
+            if new_product_ids[i]:  # skip empty rows
+                product_id = int(new_product_ids[i])
+                qty = int(new_quantities[i] or 0)
+                price = float(new_prices[i] or 0)
+                cursor.execute("""
+                    INSERT INTO invoice_items (invoice_id, product_id, quantity, price, subtotal)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (invoice_id, product_id, qty, price, qty * price))
 
         conn.commit()
         conn.close()
         return redirect(url_for("invoice_detail", invoice_id=invoice_id))
 
-    # GET → load invoice
+    # GET → load invoice + available products
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
     invoice = cursor.fetchone()
 
@@ -378,8 +406,12 @@ def invoice_edit(invoice_id):
     """, (invoice_id,))
     items = cursor.fetchall()
 
+    cursor.execute("SELECT * FROM inventory")  # all products
+    products = cursor.fetchall()
+
     conn.close()
-    return render_template("invoice_edit.html", invoice=invoice, items=items)
+    return render_template("invoice_edit.html", invoice=invoice, items=items, products=products)
+
 
 
 if __name__ == "__main__":
