@@ -153,21 +153,39 @@
         </div>
     </div>
 
-    <script>
-    function showImage(src) {
-        document.getElementById("previewImage").src = src;
+<script>
+function showImage(src) {
+    document.getElementById("previewImage").src = src;
+}
+
+function removeRow(btn) {
+    btn.closest("tr").remove();
+}
+
+document.getElementById("editInvoiceForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const invoiceId = "{{ invoice.id }}";
+
+    // 🧠 Check if all items are removed before sending to server
+    const remainingItems = this.querySelectorAll('input[name="item_id"]').length;
+
+    if (remainingItems === 0) {
+        const confirmDelete = confirm(
+            "⚠️ You have removed all items.\nThis will permanently delete the entire invoice.\n\nAre you sure you want to proceed?"
+        );
+
+        if (!confirmDelete) {
+            alert("❌ Invoice deletion canceled.");
+            // 🧭 Close the Edit Invoice modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById("editModal"));
+            if (modal) modal.hide();
+            return;
+        }
     }
 
-    function removeRow(btn) {
-        btn.closest("tr").remove();
-    }
-
-    document.getElementById("editInvoiceForm").addEventListener("submit", async function (e) {
-        e.preventDefault();
-
-        const formData = new FormData(this);
-        const invoiceId = {{ invoice.id }};
-
+    try {
         const response = await fetch(`/invoice/${invoiceId}/edit_modal`, {
             method: "POST",
             body: formData
@@ -179,24 +197,48 @@
             alert("❌ " + result.error);
         } else {
             alert("✅ " + result.message);
-            location.reload();
+
+            if (result.message.includes("deleted")) {
+                // Redirect to invoice list if invoice deleted
+                window.location.href = "/invoices";
+            } else {
+                location.reload();
+            }
         }
-    });
-
-    async function deleteInvoice(id) {
-        if (!confirm("Are you sure you want to delete this invoice?")) return;
-
-        const response = await fetch(`/invoice/${id}/delete`, { method: "POST" });
-        const result = await response.json();
-
-        if (result.error) {
-            alert("❌ " + result.error);
-        } else {
-            alert("✅ " + result.message);
-            window.location.href = "/invoices";
-        }
+    } catch (err) {
+        alert("❌ Network or server error: " + err);
     }
-    </script>
+});
+
+async function deleteInvoice(id) {
+    const confirmDelete = confirm("🗑️ Are you sure you want to permanently delete this invoice?");
+    if (!confirmDelete) {
+        // 🧭 Also close modal if open
+        const modal = bootstrap.Modal.getInstance(document.getElementById("editModal"));
+        if (modal) modal.hide();
+        return;
+    }
+
+    const response = await fetch(`/invoice/${id}/delete`, { method: "POST" });
+    const result = await response.json();
+
+    if (result.error) {
+        alert("❌ " + result.error);
+    } else {
+        alert("✅ " + result.message);
+        window.location.href = "/invoices";
+    }
+}
+
+// 🧩 Reset the edit modal when it's closed, so next open is fresh
+const editModalEl = document.getElementById('editModal');
+if (editModalEl) {
+    editModalEl.addEventListener('hidden.bs.modal', function () {
+        location.reload(); // ensures the form resets & fresh data next open
+    });
+}
+</script>
+
 </body>
 {% endblock %}
 </html>
