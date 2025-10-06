@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-    {% extends "base.html" %}
+{% extends "base.html" %}
 {% block content %}
 <head>
     <meta charset="UTF-8">
@@ -13,28 +13,36 @@
                 display: none;
             }
         }
+        .invoice-img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            cursor: pointer;
+        }
     </style>
 </head>
+
 <body class="container-fluid py-4">
 
-    <!-- Header row -->
+    <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="mb-0">Invoice #{{ invoice.id }}</h1>
         <div class="no-print">
-            <a href="{{ url_for('invoice_edit', invoice_id=invoice.id) }}" class="btn btn-warning">✏️ Edit</a>
+            <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal">✏️ Edit</button>
             <a href="{{ url_for('invoice_pdf', invoice_id=invoice.id) }}" class="btn btn-primary">⬇️ Download PDF</a>
             <button onclick="window.print()" class="btn btn-success">🖨️ Print</button>
+            <button class="btn btn-danger" onclick="deleteInvoice('{{ invoice.id }}')">🗑️ Delete</button>
             <a href="{{ url_for('invoices') }}" class="btn btn-secondary">← Back to Invoices</a>
         </div>
     </div>
 
-    <!-- Invoice Info -->
+    <!-- Info -->
     <p><strong>Customer:</strong> {{ invoice.customer_name }}</p>
     <p><strong>Date:</strong> {{ invoice.created_at }}</p>
 
     <!-- Items Table -->
-    <table class="table table-bordered">
-        <thead>
+    <table class="table table-bordered align-middle">
+        <thead class="table-light">
             <tr>
                 <th>Image</th>
                 <th>Product</th>
@@ -48,7 +56,8 @@
             <tr>
                 <td>
                     {% if item.image_url %}
-                        <img src="{{ url_for('static', filename=item.image_url) }}" alt="Product" width="50">
+                        <img src="{{ item.image_url }}" class="invoice-img" data-bs-toggle="modal"
+                             data-bs-target="#imgModal" onclick="showImage('{{ item.image_url }}')">
                     {% else %}
                         -
                     {% endif %}
@@ -60,8 +69,134 @@
             </tr>
             {% endfor %}
         </tbody>
+        <tfoot>
+            <tr>
+                <th colspan="4" class="text-end">Total</th>
+                <th>${{ "%.2f"|format(total) }}</th>
+            </tr>
+        </tfoot>
     </table>
 
+    <!-- Image Preview Modal -->
+    <div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-transparent border-0 text-center">
+                <img id="previewImage" src="" class="img-fluid rounded shadow">
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="editInvoiceForm" method="POST">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Invoice #{{ invoice.id }}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label>Customer Name</label>
+                            <input type="text" class="form-control" name="customer_name"
+                                   value="{{ invoice.customer_name }}">
+                        </div>
+
+                        <table class="table table-bordered align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th>Subtotal</th>
+                                    <th>Remove</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>
+                                        {% if item.image_url %}
+                                            <img src="{{ item.image_url }}" class="invoice-img"
+                                                 onclick="showImage('{{ item.image_url }}')">
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ item.name }}</td>
+                                    <td>
+                                        <input type="hidden" name="item_id" value="{{ item.id }}">
+                                        <input type="number" name="quantity" class="form-control form-control-sm"
+                                               value="{{ item.quantity }}" min="1">
+                                    </td>
+                                    <td>
+                                        <input type="number" name="price" class="form-control form-control-sm"
+                                               value="{{ item.price }}" step="0.01">
+                                    </td>
+                                    <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                                onclick="removeRow(this)">🗑️</button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function showImage(src) {
+        document.getElementById("previewImage").src = src;
+    }
+
+    function removeRow(btn) {
+        btn.closest("tr").remove();
+    }
+
+    document.getElementById("editInvoiceForm").addEventListener("submit", async function (e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const invoiceId = {{ invoice.id }};
+
+        const response = await fetch(`/invoice/${invoiceId}/edit_modal`, {
+            method: "POST",
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.error) {
+            alert("❌ " + result.error);
+        } else {
+            alert("✅ " + result.message);
+            location.reload();
+        }
+    });
+
+    async function deleteInvoice(id) {
+        if (!confirm("Are you sure you want to delete this invoice?")) return;
+
+        const response = await fetch(`/invoice/${id}/delete`, { method: "POST" });
+        const result = await response.json();
+
+        if (result.error) {
+            alert("❌ " + result.error);
+        } else {
+            alert("✅ " + result.message);
+            window.location.href = "/invoices";
+        }
+    }
+    </script>
 </body>
 {% endblock %}
 </html>

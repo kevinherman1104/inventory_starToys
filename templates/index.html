@@ -4,425 +4,283 @@
 {% block content %}
 
 <head>
-    <meta charset="UTF-8">
-    <title>Inventory Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <meta charset="UTF-8">
+  <title>Inventory Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 
 <body class="container-fluid p-4">
 
-    <header class="mb-4 d-flex justify-content-between">
-        <h2>📦 Inventory System</h2>
-        <div>
-            <a href="{{ url_for('invoice') }}" class="btn btn-outline-primary">🧾 Invoice</a>
-        </div>
-    </header>
-
-    <!-- Search -->
-    <form method="get" class="mb-3 d-flex">
-        <input type="text" class="form-control me-2" name="q" placeholder="Search by ID, name, supplier, category..."
-            value="{{ search }}">
-        <button class="btn btn-primary">Search</button>
-    </form>
-
-    <!-- Add Button -->
-    <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addModal">➕ Add Product</button>
-
-    <!-- Table -->
-    <table class="table table-bordered align-middle">
-        <thead class="table-light">
-            <tr>
-                <th>ID</th>
-                <th>Product ID</th>
-                <th>Name</th>
-                <th>Stock</th>
-                <th>Category</th>
-                <th>Supplier</th>
-                <th>Cost</th>
-                <th>Price</th>
-                <th>Image</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for row in rows %}
-            <tr>
-                <td>{{ row.id }}</td>
-                <td>{{ row.product_id }}</td>
-                <td>{{ row.name }}</td>
-                <td>{{ row.stock }}</td>
-                <td>{{ row.category }}</td>
-                <td>{{ row.supplier }}</td>
-                <td>{{ row.cost_price }}</td>
-                <td>{{ row.selling_price }}</td>
-                <td>
-                    {% if row.image_url %}
-                    <img src="{{row.image_url}}" class="img-thumbnail" style="max-width:60px; cursor:pointer;"
-                        onclick="showImage(this.src)">
-                    {% else %}
-                    No Image
-                    {% endif %}
-                </td>
-                <td>
-                    <button class="btn btn-warning btn-sm edit-btn" data-id="{{ row.id }}"
-                        data-product-id="{{ row.product_id }}" data-name="{{ row.name }}" data-stock="{{ row.stock }}"
-                        data-category="{{ row.category }}" data-supplier="{{ row.supplier }}"
-                        data-cost="{{ row.cost_price }}" data-price="{{ row.selling_price }}"
-                        data-image="{{ row.image_url }}" data-bs-toggle="modal" data-bs-target="#editModal">
-                        Edit
-                    </button>
-                    <!-- Delete button in table row -->
-                    <!-- Delete button (replace any previous inline onclick delete) -->
-                    <button class="btn btn-sm btn-danger delete-btn" type="button" data-row='{{ row|tojson|safe }}'>
-                        🗑️ Delete
-                    </button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    <!-- Image Modal -->
-    <div class="modal fade" id="imageModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-body text-center">
-                    <img id="modalImage" src="" class="img-fluid">
-                </div>
-            </div>
-        </div>
+  <header class="mb-4 d-flex justify-content-between">
+    <h2>📦 Inventory System</h2>
+    <div>
+      <a href="{{ url_for('invoice') }}" class="btn btn-outline-primary">🧾 Invoice</a>
     </div>
+  </header>
 
-    <!-- Add Modal -->
-    <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <form id="addForm" method="POST" enctype="multipart/form-data" action="{{ url_for('add') }}">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Add Product</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <label>Product ID</label>
-                        <input type="text" name="product_id" class="form-control mb-2" required>
-                        <label>Name</label>
-                        <input type="text" name="name" class="form-control mb-2" required>
-                        <label>Stock</label>
-                        <input type="number" name="stock" class="form-control mb-2" value="0">
-                        <label>Category</label>
-                        <input type="text" name="category" class="form-control mb-2">
-                        <label>Supplier</label>
-                        <input type="text" name="supplier" class="form-control mb-2">
-                        <label>Cost Price</label>
-                        <input type="number" step="0.01" name="cost_price" class="form-control mb-2">
-                        <label>Selling Price</label>
-                        <input type="number" step="0.01" name="selling_price" class="form-control mb-2">
+  <!-- Search -->
+  <form method="get" class="mb-3 d-flex">
+    <input type="text" class="form-control me-2" name="q"
+           placeholder="Search by ID, name, supplier, status..."
+           value="{{ search }}">
+    <button class="btn btn-primary">Search</button>
+  </form>
 
-                        <!-- Upload new image -->
-                        <div class="mb-3">
-                            <label class="form-label">Upload Image</label>
-                            <input type="file" class="form-control" id="add_image_file" name="image_file"
-                                accept="image/*">
-                            <div class="mt-2">
-                                <img id="add_image_preview" src="" alt="Preview" class="img-thumbnail"
-                                    style="max-width:150px; display:none;">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Add Product</button>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    </div>
-                </form>
-            </div>
+  <!-- Add Button -->
+  <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addModal">➕ Add Product</button>
+
+  <!-- Table -->
+  <table class="table table-bordered align-middle">
+    <thead class="table-light">
+      <tr>
+        <th>ID</th>
+        <th>Product ID</th>
+        <th>Name</th>
+        <th>Stock</th>
+        <th>Status</th>
+        <th>Supplier</th>
+        <th>Cost</th>
+        <th>Price</th>
+        <th>Image</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.id }}</td>
+        <td>{{ row.product_id }}</td>
+        <td>{{ row.name }}</td>
+        <td>{{ row.stock }}</td>
+
+        <!-- ✅ Status calculated from stock -->
+        <td>
+          {% if row.stock == 0 %}
+            <span class="badge bg-danger">Out of Stock</span>
+          {% else %}
+            <span class="badge bg-success">In Stock</span>
+          {% endif %}
+        </td>
+
+        <td>{{ row.supplier }}</td>
+        <td>{{ row.cost_price }}</td>
+        <td>{{ row.selling_price }}</td>
+
+        <td>
+          {% if row.image_url %}
+          <img src="{{ row.image_url }}" class="img-thumbnail"
+               style="max-width:60px; cursor:pointer;" onclick="showImage(this.src)">
+          {% else %}
+          No Image
+          {% endif %}
+        </td>
+
+        <td>
+          <button class="btn btn-warning btn-sm edit-btn"
+                  data-id="{{ row.id }}"
+                  data-product-id="{{ row.product_id }}"
+                  data-name="{{ row.name }}"
+                  data-stock="{{ row.stock }}"
+                  data-supplier="{{ row.supplier }}"
+                  data-cost="{{ row.cost_price }}"
+                  data-price="{{ row.selling_price }}"
+                  data-image="{{ row.image_url }}"
+                  data-bs-toggle="modal" data-bs-target="#editModal">
+            Edit
+          </button>
+
+          <button class="btn btn-sm btn-danger delete-btn"
+                  type="button"
+                  data-row='{{ row|tojson|safe }}'>
+            🗑️ Delete
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- Image Modal -->
+  <div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-body text-center">
+          <img id="modalImage" src="" class="img-fluid">
         </div>
+      </div>
     </div>
+  </div>
 
+  <!-- Add Modal -->
+  <div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <form id="addForm" method="POST" enctype="multipart/form-data" action="{{ url_for('add') }}">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
 
+          <div class="modal-body">
+            <label>Product ID</label>
+            <input type="text" name="product_id" class="form-control mb-2" required>
 
-    <!-- Edit Modal -->
-<div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-md">
-    <div class="modal-content">
-      <form id="editForm" method="POST" enctype="multipart/form-data">
-        <input type="hidden" id="edit_id" name="id">
+            <label>Name</label>
+            <input type="text" name="name" class="form-control mb-2" required>
 
-        <div class="modal-header py-2">
-          <h5 class="modal-title">Edit Product</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-        </div>
+            <label>Stock</label>
+            <input type="number" name="stock" class="form-control mb-2" value="0">
 
-        <div class="modal-body py-2">
+            <label>Supplier</label>
+            <input type="text" name="supplier" class="form-control mb-2">
 
-          <!-- Product ID (half width) -->
-          <div class="row g-2">
-            <div class="col-md-6">
+            <label>Cost Price</label>
+            <input type="number" step="0.01" name="cost_price" class="form-control mb-2">
+
+            <label>Selling Price</label>
+            <input type="number" step="0.01" name="selling_price" class="form-control mb-2">
+
+            <!-- Upload new image -->
+            <div class="mb-3">
+              <label class="form-label">Upload Image</label>
+              <input type="file" class="form-control" id="add_image_file" name="image_file" accept="image/*">
+              <div class="mt-2">
+                <img id="add_image_preview" src="" alt="Preview"
+                     class="img-thumbnail" style="max-width:150px; display:none;">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="submit" class="btn btn-primary">Add Product</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Simplified Edit Modal -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+      <div class="modal-content">
+        <form id="editForm" method="POST" enctype="multipart/form-data">
+          <input type="hidden" id="edit_id" name="id">
+
+          <div class="modal-header py-2">
+            <h5 class="modal-title">Edit Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+
+          <div class="modal-body py-2">
+            <div class="mb-2">
               <label class="form-label">Product ID</label>
               <input type="text" class="form-control form-control-sm" id="edit_product_id" name="product_id" required>
             </div>
-            <div class="col-md-6"><!-- empty spacer if needed --></div>
-          </div>
 
-          <!-- Name (full width row) -->
-          <div class="row g-2 mt-2">
-            <div class="col-12">
+            <div class="mb-2">
               <label class="form-label">Name</label>
               <input type="text" class="form-control form-control-sm" id="edit_name" name="name" required>
             </div>
-          </div>
 
-          <!-- Stock, Cost, Price (3 columns) -->
-          <div class="row g-2 mt-2">
-            <div class="col-md-4">
+            <div class="mb-2">
               <label class="form-label">Stock</label>
               <input type="number" class="form-control form-control-sm" id="edit_stock" name="stock" required>
             </div>
-            <div class="col-md-4">
-              <label class="form-label">Cost</label>
-              <input type="number" class="form-control form-control-sm" id="edit_cost" name="cost_price" step="0.01" required>
-            </div>
-            <div class="col-md-4">
-              <label class="form-label">Price</label>
-              <input type="number" class="form-control form-control-sm" id="edit_price" name="selling_price" step="0.01" required>
-            </div>
-          </div>
 
-          <!-- Category + Supplier (2 columns) -->
-          <div class="row g-2 mt-2">
-            <div class="col-md-6">
-              <label class="form-label">Category</label>
-              <input type="text" class="form-control form-control-sm" id="edit_category" name="category">
-            </div>
-            <div class="col-md-6">
+            <div class="mb-2">
               <label class="form-label">Supplier</label>
               <input type="text" class="form-control form-control-sm" id="edit_supplier" name="supplier">
             </div>
-          </div>
 
-          <!-- Image section -->
-          <div class="mt-3">
-            <label class="form-label">Current Image</label><br>
-            <img id="edit_current_image" src="" alt="No Image" class="img-thumbnail mb-2" style="max-width:120px;">
-            <input type="hidden" id="existing_image" name="existing_image">
-          </div>
+            <div class="mb-2">
+              <label class="form-label">Cost</label>
+              <input type="number" step="0.01" class="form-control form-control-sm" id="edit_cost" name="cost_price" required>
+            </div>
 
-          <div class="mb-2">
-            <label class="form-label">Change Image</label>
-            <input type="file" class="form-control form-control-sm" id="edit_image_file" name="image_file" accept="image/*">
-            <div class="mt-2">
-              <img id="edit_image_preview" src="" alt="Preview" class="img-thumbnail"
-                   style="max-width:120px; display:none;">
+            <div class="mb-2">
+              <label class="form-label">Price</label>
+              <input type="number" step="0.01" class="form-control form-control-sm" id="edit_price" name="selling_price" required>
+            </div>
+
+            <div class="mt-3">
+              <label class="form-label">Current Image</label><br>
+              <img id="edit_current_image" src="" alt="No Image" class="img-thumbnail mb-2" style="max-width:120px;">
+              <input type="hidden" id="existing_image" name="existing_image">
+            </div>
+
+            <div class="mb-2">
+              <label class="form-label">Change Image</label>
+              <input type="file" class="form-control form-control-sm" id="edit_image_file" name="image_file" accept="image/*">
+              <div class="mt-2">
+                <img id="edit_image_preview" src="" alt="Preview" class="img-thumbnail"
+                     style="max-width:120px; display:none;">
+              </div>
             </div>
           </div>
 
-        </div>
-
-        <div class="modal-footer py-2">
-          <button type="submit" class="btn btn-primary btn-sm">Save</button>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        </div>
-      </form>
+          <div class="modal-footer py-2">
+            <button type="submit" class="btn btn-primary btn-sm">Save</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
+  <script>
+    // ✅ Auto-preview image in add modal
+    document.getElementById("add_image_file").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const preview = document.getElementById("add_image_preview");
+          preview.src = e.target.result;
+          preview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
 
+    // ✅ Edit modal image preview
+    document.getElementById("edit_image_file").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const preview = document.getElementById("edit_image_preview");
+          preview.src = e.target.result;
+          preview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <form id="deleteForm" method="POST" action="">
-                    <div class="modal-header bg-danger text-white">
-                        <h5 class="modal-title">Confirm Deletion</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body text-center">
-                        <p>Are you sure you want to delete this product?</p>
-                        <p><strong id="deleteProductId"></strong> - <span id="deleteProductName"></span></p>
-                        <img id="deleteProductImage" src="" alt="Product Image" class="img-thumbnail mt-2"
-                            style="max-width:150px; display:none;">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-danger">Yes, Delete</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    // ✅ Fill modal with data from row
+    document.querySelectorAll(".edit-btn").forEach(btn => {
+      btn.addEventListener("click", function () {
+        const id = this.dataset.id;
+        document.getElementById("edit_id").value = id;
+        document.getElementById("edit_product_id").value = this.dataset.productId;
+        document.getElementById("edit_name").value = this.dataset.name;
+        document.getElementById("edit_stock").value = this.dataset.stock;
+        document.getElementById("edit_supplier").value = this.dataset.supplier;
+        document.getElementById("edit_cost").value = this.dataset.cost;
+        document.getElementById("edit_price").value = this.dataset.price;
+        document.getElementById("existing_image").value = this.dataset.image;
+        document.getElementById("edit_current_image").src = this.dataset.image || "";
+        document.getElementById("editForm").action = `/edit/${id}`;
+      });
+    });
 
-    <script>
-        // Add modal image preview
-        document.getElementById("add_image_file").addEventListener("change", function (event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const preview = document.getElementById("add_image_preview");
-                    preview.src = e.target.result;
-                    preview.style.display = "block";
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-
-        // Edit modal image preview
-        document.getElementById("edit_image_file").addEventListener("change", function (event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = e => {
-                    const preview = document.getElementById("edit_image_preview");
-                    preview.src = e.target.result;
-                    preview.style.display = "block";
-                };
-                reader.readAsDataURL(file);
-            }
-        });
-        document.querySelectorAll(".edit-btn").forEach(btn => {
-            btn.addEventListener("click", function () {
-                const id = this.dataset.id;
-                const productId = this.dataset.productId;
-                const name = this.dataset.name;
-                const stock = this.dataset.stock;
-                const category = this.dataset.category;
-                const supplier = this.dataset.supplier;
-                const cost = this.dataset.cost;
-                const price = this.dataset.price;
-                const imageUrl = this.dataset.image;
-
-                document.getElementById("edit_id").value = id;
-                document.getElementById("edit_product_id").value = productId;
-                document.getElementById("edit_name").value = name;
-                document.getElementById("edit_stock").value = stock;
-                document.getElementById("edit_category").value = category;
-                document.getElementById("edit_supplier").value = supplier;
-                document.getElementById("edit_cost").value = cost;
-                document.getElementById("edit_price").value = price;
-                document.getElementById("existing_image").value = imageUrl;
-
-                // show current image
-                document.getElementById("edit_current_image").src = imageUrl ? `${imageUrl}` : "";
-
-                // set form action
-                document.getElementById("editForm").action = `/edit/${id}`;
-            });
-        });
-        function showImage(url) {
-            document.getElementById("modalImage").src = url;
-            new bootstrap.Modal(document.getElementById("imageModal")).show();
-        }
-
-        function fillEditForm(btn) {
-            const row = JSON.parse(btn.getAttribute("data-row"));
-            document.querySelector("#edit_id").value = row.id;
-            document.querySelector("#edit_product_id").value = row.product_id;
-            document.querySelector("#edit_name").value = row.name;
-            document.querySelector("#edit_stock").value = row.stock;
-            document.querySelector("#edit_category").value = row.category;
-            document.querySelector("#edit_supplier").value = row.supplier;
-            document.querySelector("#edit_cost_price").value = row.cost_price;
-            document.querySelector("#edit_selling_price").value = row.selling_price;
-            document.querySelector("#edit_existing_image").value = row.image_url;
-
-            const modal = new bootstrap.Modal(document.getElementById("editModal"));
-            modal.show();
-        }
-
-        function confirmDelete(id, product_id, name, image_url) {
-            document.getElementById("delete_product_id").textContent = product_id;
-            document.getElementById("delete_name").textContent = name;
-
-            const imgEl = document.getElementById("delete_image");
-            if (image_url) {
-                imgEl.src = image_url;
-                imgEl.style.display = "block";
-            } else {
-                imgEl.style.display = "none";
-            }
-
-            document.getElementById("deleteForm").action = "/delete/" + id;
-            new bootstrap.Modal(document.getElementById("deleteModal")).show();
-        }
-        function showDeleteModal(row) {
-            // set textual fields
-            document.getElementById('deleteProductId').textContent = row.product_id || row.id;
-            document.getElementById('deleteProductName').textContent = row.name || '';
-
-            // compute image URL safely
-            const imgEl = document.getElementById('deleteProductImage');
-            let imageUrl = '';
-            if (row.image_url) {
-                // if row.image_url is already absolute or starts with '/', use it; otherwise prefix static base
-                if (row.image_url.startsWith('/') || row.image_url.startsWith('http')) {
-                    imageUrl = row.image_url;
-                } else {
-                    imageUrl = STATIC_BASE + row.image_url;
-                }
-            }
-
-            if (imageUrl) {
-                imgEl.src = imageUrl;
-                imgEl.style.display = 'block';
-            } else {
-                imgEl.style.display = 'none';
-                imgEl.src = '';
-            }
-
-            // set form action to /delete/<id>
-            document.getElementById('deleteForm').action = '/delete/' + row.id;
-
-            // show modal
-            new bootstrap.Modal(document.getElementById('deleteModal')).show();
-        }
-
-        // Use event delegation so dynamically-inserted rows (AJAX reload) still work
-        document.addEventListener('click', function (e) {
-            const btn = e.target.closest('.delete-btn');
-            if (!btn) return;
-
-            // parse row JSON from data attribute
-            let row;
-            try {
-                row = JSON.parse(btn.getAttribute('data-row') || '{}');
-            } catch (err) {
-                console.error('Failed to parse row JSON for delete button:', err, btn.getAttribute('data-row'));
-                return;
-            }
-
-            showDeleteModal(row);
-        });
-
-
-        function openEditModal(id, product_id, name, stock, cost, price, imageUrl) {
-            // fill form
-            document.getElementById("edit_id").value = id;
-            document.getElementById("edit_product_id").value = product_id;
-            document.getElementById("edit_name").value = name;
-            document.getElementById("edit_stock").value = stock;
-            document.getElementById("edit_cost").value = cost;
-            document.getElementById("edit_price").value = price;
-
-            // image
-            let imgElement = document.getElementById("edit_current_image");
-            if (imageUrl) {
-                imgElement.src = imageUrl;
-                imgElement.alt = "Current Image";
-            } else {
-                imgElement.src = "";
-                imgElement.alt = "No Image";
-            }
-
-            // show modal
-            let modal = new bootstrap.Modal(document.getElementById('editModal'));
-            modal.show();
-        }
-
-    </script>
+    function showImage(url) {
+      document.getElementById("modalImage").src = url;
+      new bootstrap.Modal(document.getElementById("imageModal")).show();
+    }
+  </script>
 
 </body>
 {% endblock %}
-
 </html>
