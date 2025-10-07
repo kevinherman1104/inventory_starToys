@@ -376,6 +376,7 @@ def invoice_pdf(invoice_id):
     p.setFont("Helvetica-Bold", 12)
     p.drawRightString(width - 100, y, "TOTAL:")
     p.drawRightString(width - 40, y, f"${total:.2f}")
+    
 
     # Finalize PDF
     p.showPage()
