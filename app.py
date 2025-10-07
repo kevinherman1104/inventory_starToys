@@ -20,6 +20,14 @@ def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
+mydb = mysql.connector.connect(
+    host=os.getenv("MYSQL_HOST", "mysql-startoys.alwaysdata.net"),
+    user=os.getenv("MYSQL_USER", "startoys"),
+    password=os.getenv("MYSQL_PASSWORD", "Nicholas1105"),
+    database=os.getenv("MYSQL_DB", "startoys_db"),
+    port=3306
+)
+
 def process_image(file, filename):
     """Resize and compress image before saving."""
     filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
@@ -29,13 +37,14 @@ def process_image(file, filename):
     return f"/static/uploads/{filename}"
 
 
-def get_connection():
-    return mysql.connector.connect(
-        host=os.environ.get("MYSQLHOST", "mysql-startoys.alwaysdata.net"),
-        user=os.environ.get("MYSQLUSER", "startoys"),
-        password=os.environ.get("MYSQLPASSWORD", "Nicholas1105"),
-        database=os.environ.get("MYSQLDATABASE", "startoys_db")
-    )
+# def get_connection():
+#     return mysql.connector.connect(
+#         host=os.environ.get("MYSQLHOST", "mysql-startoys.alwaysdata.net"),
+#         user=os.environ.get("MYSQLUSER", "startoys"),
+#         password=os.environ.get("MYSQLPASSWORD", "Nicholas1105"),
+#         database=os.environ.get("MYSQLDATABASE", "startoys_db")
+#         port=3306
+#     )
 
 
 # -------------------- INVENTORY --------------------
