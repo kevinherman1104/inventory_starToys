@@ -31,10 +31,10 @@ def process_image(file, filename):
 
 def get_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="Nicholas1105!",  # Update this if needed
-        database="inventory_db"
+        host=os.environ.get("MYSQLHOST", "localhost"),
+        user=os.environ.get("MYSQLUSER", "root"),
+        password=os.environ.get("MYSQLPASSWORD", ""),
+        database=os.environ.get("MYSQLDATABASE", "inventory_db")
     )
 
 
