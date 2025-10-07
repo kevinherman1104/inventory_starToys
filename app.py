@@ -51,7 +51,7 @@ def process_image(file, filename):
 @app.route("/", methods=["GET"])
 def home():
     search_term = request.args.get("q", "").strip()
-    conn = get_connection()
+    conn = mydb
     cursor = conn.cursor(dictionary=True)
     if search_term:
         like = f"%{search_term}%"
