@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container py-4">
-  <h2>Edit Invoice #{{ invoice.id }}</h2>
+  <h2>Ubah Faktur #{{ invoice.id }}</h2>
 
   <form id="editInvoiceForm" method="POST">
     <div class="mb-3">
-      <label>Customer Names</label>
+      <label>Pelanggan Names</label>
       <input type="text" class="form-control" name="customer_name" value="{{ invoice.customer_name }}">
     </div>
 
@@ -14,9 +14,9 @@
       <thead>
         <tr>
           <th>Image</th>
-          <th>Product</th>
-          <th>Qty</th>
-          <th>Price</th>
+          <th>Produk</th>
+          <th>Jumlah</th>
+          <th>Harga</th>
           <th>Subtotal</th>
           <th>Action</th>
         </tr>
@@ -55,7 +55,7 @@
 
     <div class="mt-4">
       <button type="submit" class="btn btn-success">💾 Save Changes</button>
-      <a href="{{ url_for('invoice_detail', invoice_id=invoice.id) }}" class="btn btn-secondary">Cancel</a>
+      <a href="{{ url_for('invoice_detail', invoice_id=invoice.id) }}" class="btn btn-secondary">Batal</a>
     </div>
   </form>
 </div>
@@ -86,7 +86,7 @@ document.querySelectorAll('.remove-item-btn').forEach(btn => {
         fetch(`/invoice/{{ invoice.id }}/delete`, { method: "POST" })
           .then(r => r.json())
           .then(data => {
-            alert(data.message || "Invoice deleted.");
+            alert(data.message || "Faktur deleted.");
             window.location.href = "{{ url_for('invoices') }}";
           })
           .catch(err => alert("Error deleting invoice: " + err));
