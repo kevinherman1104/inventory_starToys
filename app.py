@@ -87,25 +87,50 @@ def add():
 
 
 # -------------------- DELETE PRODUCT --------------------
-@app.route("/delete/<int:item_id>")
+@app.route("/delete/<int:item_id>", methods=["GET", "POST"])
 def delete(item_id):
-    conn = get_connection()
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM inventory WHERE id=%s", (item_id,))
-    conn.commit()
-    conn.close()
-    return redirect(url_for("home"))
+    try:
+        print(f"🗑️ Delete request received for ID {item_id}")
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM inventory WHERE id=%s", (item_id,))
+        conn.commit()
+        conn.close()
+        print("✅ Successfully deleted.")
+        return redirect(url_for("home"))
+    except Exception as e:
+        print(f"❌ Error while deleting: {e}")
+        return jsonify({"error": str(e)}), 500
 
 
 # -------------------- INVOICE CREATION --------------------
 @app.route("/invoice")
 def invoice():
+    search_term = request.args.get("q", "").strip()
+
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
-    cursor.execute("SELECT * FROM inventory")
+
+    if search_term:
+        like_term = f"%{search_term}%"
+        cursor.execute("""
+            SELECT * FROM inventory
+            WHERE product_id LIKE %s
+               OR name LIKE %s
+               OR supplier LIKE %s
+        """, (like_term, like_term, like_term))
+    else:
+        cursor.execute("SELECT * FROM inventory")
+
     rows = cursor.fetchall()
     conn.close()
-    return render_template("invoice.html", rows=rows)
+
+    # 👇 Add this
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return jsonify(rows)
+
+    return render_template("invoice.html", rows=rows, search=search_term)
+
 
 
 @app.route("/save_invoice", methods=["POST"])
@@ -390,6 +415,59 @@ def invoice_pdf(invoice_id):
         download_name=f"invoice_{invoice['id']}.pdf",
         mimetype="application/pdf"
     )
+# ======================================================
+# ✏️ EDIT PRODUCT
+# ======================================================
+@app.route("/edit/<int:item_id>", methods=["GET", "POST"])
+def edit(item_id):
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+
+    if request.method == "POST":
+        try:
+            product_id = request.form["product_id"]
+            name = request.form["name"]
+            stock = int(request.form["stock"] or 0)
+            supplier = request.form.get("supplier") or ""
+            cost_price = float(request.form["cost_price"] or 0)
+            selling_price = float(request.form["selling_price"] or 0)
+
+            # Get existing image path
+            image_url = request.form.get("existing_image")
+
+            # ✅ Handle new image upload (if provided)
+            if "image_file" in request.files:
+                file = request.files["image_file"]
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    image_url = process_image(file, filename)
+
+            # ✅ Update product data
+            cursor.execute("""
+                UPDATE inventory
+                SET product_id=%s, name=%s, stock=%s, image_url=%s,
+                    supplier=%s, cost_price=%s, selling_price=%s
+                WHERE id=%s
+            """, (product_id, name, stock, image_url, supplier, cost_price, selling_price, item_id))
+
+            conn.commit()
+            print(f"✅ Product {item_id} updated successfully")
+            return redirect(url_for("home"))
+
+        except Exception as e:
+            print(f"❌ Error updating product {item_id}: {e}")
+            conn.rollback()
+            return jsonify({"error": str(e)}), 500
+
+        finally:
+            conn.close()
+
+    # 🧾 GET — Fetch existing item for edit modal (if needed)
+    cursor.execute("SELECT * FROM inventory WHERE id=%s", (item_id,))
+    item = cursor.fetchone()
+    conn.close()
+
+    return render_template("edit.html", item=item)
 
 
 if __name__ == "__main__":
