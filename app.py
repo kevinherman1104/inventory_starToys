@@ -112,24 +112,39 @@ def invoice():
     cursor = conn.cursor(dictionary=True)
 
     if search_term:
-        like_term = f"%{search_term}%"
+        like = f"%{search_term}%"
         cursor.execute("""
             SELECT * FROM inventory
             WHERE product_id LIKE %s
                OR name LIKE %s
                OR supplier LIKE %s
-        """, (like_term, like_term, like_term))
+        """, (like, like, like))
     else:
         cursor.execute("SELECT * FROM inventory")
 
     rows = cursor.fetchall()
     conn.close()
 
-    # 👇 Add this
+    # JSON for live-search requests (same behavior as home())
     if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        for r in rows:
+            # force numeric conversion for price-related fields
+            for key in ("cost_price", "selling_price", "stock"):
+                try:
+                    if r.get(key) is not None:
+                        r[key] = float(r[key])
+                except:
+                    r[key] = 0
+            # stringify anything else non-serializable
+            for k, v in list(r.items()):
+                if hasattr(v, "isoformat"):
+                    r[k] = v.isoformat()
+                elif not isinstance(v, (str, int, float, bool, type(None))):
+                    r[k] = str(v)
         return jsonify(rows)
 
     return render_template("invoice.html", rows=rows, search=search_term)
+
 
 
 

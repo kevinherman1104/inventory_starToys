@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 {% extends "base.html" %}
 {% block content %}
 <head>
@@ -8,95 +8,162 @@
   <link rel="stylesheet"
         href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<style>
+  /* Make Buat Nota table flexible and proportional */
+  #invoice-table {
+    table-layout: auto !important; /* let columns size dynamically */
+    width: 100%;
+  }
+
+  /* widen specific columns */
+  #invoice-table th:nth-child(2),
+  #invoice-table td:nth-child(2) {
+    width: 40%; /* Produk column wider */
+  }
+
+  #invoice-table th:nth-child(4),
+  #invoice-table td:nth-child(4),
+  #invoice-table th:nth-child(5),
+  #invoice-table td:nth-child(5) {
+    width: 15%; /* Harga & Subtotal columns wider */
+  }
+
+  /* make sure qty and aksi remain compact */
+  #invoice-table th:nth-child(3),
+  #invoice-table td:nth-child(3),
+  #invoice-table th:nth-child(6),
+  #invoice-table td:nth-child(6) {
+    width: 8%;
+    white-space: nowrap;
+  }
+
+  /* keep cell content tidy */
+  #invoice-table td, #invoice-table th {
+    vertical-align: middle;
+  }
+
+  #invoice-table .price, #invoice-table .subtotal {
+    text-align: right;
+    white-space: nowrap;
+  }
+</style>
+
 </head>
 
-<body class="container-fluid py-4">
+<body class="py-4">
+  <div class="container">
+    <div class="row g-4">
+      <!-- LEFT: Produk list -->
+      <div class="col-lg-7 col-md-12">
+        <h2>Daftar Produk</h2>
+        <input type="text" id="search" placeholder="Cari produk..." class="form-control mb-3">
 
-<div class="row">
-  <!-- LEFT: Produk list -->
-  <div class="col-md-7">
-    <h2>Daftar Produk</h2>
-    <input type="text" id="search" placeholder="Cari products..." class="form-control mb-3">
-
-    <table class="table table-bordered">
-      <thead>
-      <tr>
-        <th>Produk ID</th>
-        <th>Nama</th>
-        <th>Stok</th>
-        <th>Selling Harga</th>
-        <th>Image</th>
-        <th>Action</th>
-      </tr>
-      </thead>
-      <tbody id="table-body">
-      {% for row in rows %}
-        <tr>
-          <td>{{ row.product_id }}</td>
-          <td>{{ row.name }}</td>
-          <td>{{ row.stock }}</td>
-          <td>{{ row.selling_price | rupiah}}</td>
-          <td>
-            {% if row.image_url %}
-              <img src="{{ row.image_url }}"
-                   alt="Preview" width="50"
-                   style="cursor:pointer"
-                   data-bs-toggle="modal"
-                   data-bs-target="#imgModal{{ row.id }}">
-              <div class="modal fade" id="imgModal{{ row.id }}" tabindex="-1">
-                <div class="modal-dialog modal-dialog-centered">
-                  <div class="modal-content">
-                    <img src="{{ row.image_url }}" class="img-fluid rounded">
+        <table class="table table-bordered align-middle table-striped">
+          <thead class="table-light">
+            <tr>  
+              <th>Produk ID</th>
+              <th>Nama</th>
+              <th>Stok</th>
+              <th>Harga Jual</th>
+              <th>Gambar</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            {% for row in rows %}
+            <tr>
+              <td>{{ row.product_id }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.stock }}</td>
+              <td>{{ "Rp {:,.0f}".format(row.selling_price) }}</td>
+              <td>
+                {% if row.image_url %}
+                  <img src="{{ row.image_url }}" alt="Preview" width="50"
+                       style="cursor:pointer" data-bs-toggle="modal"
+                       data-bs-target="#imgModal{{ row.id }}">
+                  <div class="modal fade" id="imgModal{{ row.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                      <div class="modal-content">
+                        <img src="{{ row.image_url }}" class="img-fluid rounded">
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            {% else %}
-              Tidak Ada Gambar
-            {% endif %}
-          </td>
-          <td>
-            <button class="btn btn-success btn-sm add-btn"
-                    data-id="{{ row.id }}"
-                    data-name="{{ row.name }}"
-                    data-price="{{ row.selling_price | rupiah}}"
-                    data-image="{{ row.image_url|default('', true) }}">
-              Tambah
-            </button>
-          </td>
-        </tr>
-      {% endfor %}
-      </tbody>
-    </table>
+                {% else %}
+                  Tidak Ada Gambar
+                {% endif %}
+              </td>
+              <td>
+                <button class="btn btn-success btn-sm add-btn"
+                        data-id="{{ row.id }}"
+                        data-name="{{ row.name }}"
+                        data-price="{{ row.selling_price }}"
+                        data-image="{{ row.image_url or '' }}">
+                  Tambah
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- RIGHT: Nota builder -->
+      <div class="col-lg-5 col-md-12">
+        <h2>Buat Nota</h2>
+        <form id="invoiceForm">
+          <input type="text" name="customer_name" class="form-control mb-2" placeholder="Nama Pelanggan">
+
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center w-100" id="invoice-table">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 10%;">Gambar</th>
+                  <th style="width: 30%;">Produk</th>
+                  <th style="width: 6%;">Qty</th>
+                  <th style="width: 18%;">Harga</th>
+                  <th style="width: 18%;">Subtotal</th>
+                  <th style="width: 8%;">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="invoice-items"></tbody>
+            </table>
+          </div>
+
+          <div class="text-end mt-3">
+            <h4>Total: <span id="total">Rp 0</span></h4>
+          </div>
+          <button type="button" class="btn btn-primary mt-2" onclick="saveInvoice()">Simpan Nota</button>
+        </form>
+      </div>
+    </div>
   </div>
 
-  <!-- RIGHT: Nota builder -->
-  <div class="col-md-5">
-    <h2>Buat Nota</h2>
-    <form id="invoiceForm">
-      <input type="text" name="customer_name" class="form-control mb-2" placeholder="Pelanggan Nama">
-
-      <table class="table table-bordered">
-        <thead>
-        <tr>
-          <th>Image</th>
-          <th>Produk</th>
-          <th>Jumlah</th>
-          <th>Harga</th>
-          <th>Subtotal</th>
-          <th></th>
-        </tr>
-        </thead>
-        <tbody id="invoice-items"></tbody>
-      </table>
-
-      <h4>Total: <span id="total">0</span></h4>
-      <button type="button" class="btn btn-primary" onclick="saveInvoice()">Simpan Nota</button>
-    </form>
+  <!-- Image Preview Modal -->
+<div class="modal fade" id="imgPreviewModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content bg-transparent border-0 text-center">
+      <img id="previewImage" src="" class="img-fluid rounded shadow">
+    </div>
   </div>
 </div>
 
+
 <script>
-// ✅ Live search (AJAX)
+// ✅ Format number → Rupiah
+function formatRupiah(num) {
+  const n = parseFloat(num);
+  if (isNaN(n)) return "Rp 0";
+  return "Rp " + n.toLocaleString("id-ID");
+}
+
+// ✅ Parse Rupiah → number
+function parseRupiah(str) {
+  if (!str) return 0;
+  return parseFloat(String(str).replace(/[^\d]/g, "")) || 0;
+}
+
+// ✅ Live Search (AJAX)
 document.getElementById("search").addEventListener("input", async function () {
   const q = this.value.trim();
   const res = await fetch(`/invoice?q=${encodeURIComponent(q)}`, {
@@ -112,18 +179,20 @@ document.getElementById("search").addEventListener("input", async function () {
       ? `<img src="${row.image_url}" alt="Preview" width="50" class="img-thumbnail" style="cursor:pointer">`
       : "Tidak Ada Gambar";
 
+    const price = parseFloat(row.selling_price) || 0;
+
     tbody.innerHTML += `
       <tr>
         <td>${row.product_id}</td>
         <td>${row.name}</td>
         <td>${row.stock}</td>
-        <td>${row.selling_price | rupiah}</td>
+        <td>${formatRupiah(price)}</td>
         <td>${imgTag}</td>
         <td>
           <button class="btn btn-success btn-sm add-btn"
                   data-id="${row.id}"
                   data-name="${row.name}"
-                  data-price="${row.selling_price | rupiah}"
+                  data-price="${price}"
                   data-image="${row.image_url || ''}">
             Tambah
           </button>
@@ -131,22 +200,25 @@ document.getElementById("search").addEventListener("input", async function () {
       </tr>`;
   }
 
-  attachAddButtons(); // rebind after update
+  attachAddButtons();
 });
 
-// ✅ Tambah Produk to Nota Table
+// ✅ Add product to invoice
 function addToInvoice(row) {
   const tbody = document.getElementById("invoice-items");
-  const existingRow = Array.from(tbody.querySelectorAll("tr")).find(tr =>
-    tr.dataset.productId === String(row.id)
+
+  let price = parseFloat(row.selling_price) || 0;
+
+  const existingRow = Array.from(tbody.querySelectorAll("tr")).find(
+    tr => tr.dataset.productId === String(row.id)
   );
 
   if (existingRow) {
     const qtyInput = existingRow.querySelector(".qty");
     qtyInput.value = parseInt(qtyInput.value) + 1;
-    const price = parseFloat(existingRow.querySelector(".price").innerText);
-    existingRow.querySelector(".subtotal").innerText =
-      (qtyInput.value * price).toFixed(2);
+    const subtotal = parseInt(qtyInput.value) * price;
+    existingRow.querySelector(".subtotal").dataset.subtotal = subtotal;
+    existingRow.querySelector(".subtotal").innerText = formatRupiah(subtotal);
     updateTotal();
     return;
   }
@@ -155,15 +227,18 @@ function addToInvoice(row) {
   tr.dataset.productId = row.id;
 
   const imgTag = row.image_url
-    ? `<img src="${row.image_url}" alt="Preview" width="50" style="cursor:pointer">`
+    ? `<img src="${row.image_url}" alt="Preview" width="50" 
+             class="img-thumbnail"
+             style="cursor:pointer"
+             onclick="showImage('${row.image_url}')">`
     : "Tidak Ada Gambar";
 
   tr.innerHTML = `
     <td>${imgTag}</td>
     <td>${row.name}</td>
     <td><input type="number" value="1" min="1" class="form-control qty" style="width:80px"></td>
-    <td class="price">${row.selling_price | rupiah} </td>
-    <td class="subtotal">${row.selling_price | rupiah}</td>
+    <td class="price" data-price="${price}">${formatRupiah(price)}</td>
+    <td class="subtotal" data-subtotal="${price}">${formatRupiah(price)}</td>
     <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); updateTotal()">X</button></td>
   `;
 
@@ -172,20 +247,22 @@ function addToInvoice(row) {
 
   tr.querySelector(".qty").addEventListener("input", function () {
     const qty = parseInt(this.value) || 0;
-    const price = parseFloat(row.selling_price);
-   tr.querySelector(".subtotal").innerText = formatRupiah(qty * price);
+    const subtotal = qty * price;
+    tr.querySelector(".subtotal").dataset.subtotal = subtotal;
+    tr.querySelector(".subtotal").innerText = formatRupiah(subtotal);
     updateTotal();
   });
 }
 
-// ✅ Bind "Tambah" buttons dynamically
+
+// ✅ Attach Add buttons
 function attachAddButtons() {
   document.querySelectorAll(".add-btn").forEach(btn => {
     btn.addEventListener("click", function () {
       const row = {
         id: this.dataset.id,
         name: this.dataset.name,
-        selling_price: parseFloat(this.dataset.price),
+        selling_price: parseFloat(this.dataset.price) || 0,
         image_url: this.dataset.image
       };
       addToInvoice(row);
@@ -194,20 +271,20 @@ function attachAddButtons() {
 }
 
 // ✅ Update total
-// Update total function
 function updateTotal() {
-    let total = 0;
-    document.querySelectorAll("#invoice-items .subtotal").forEach(el => {
-        total += parseFloat(el.innerText.replace(/[^\d.-]/g, '')) || 0;
-    });
-    document.getElementById("total").innerText = formatRupiah(total);
+  let total = 0;
+  document.querySelectorAll("#invoice-items .subtotal").forEach(el => {
+    total += parseFloat(el.dataset.subtotal) || 0;
+  });
+  document.getElementById("total").innerText = formatRupiah(total);
 }
+
 // ✅ Save invoice
 function saveInvoice() {
   const customerInput = document.querySelector("[name='customer_name']");
   const customerName = customerInput.value.trim();
   if (!customerName) {
-    alert("⚠️ Harap masukkan nama pelanggan sebelum simpan nota.");
+    alert("⚠️ Harap masukkan nama pelanggan sebelum menyimpan nota.");
     customerInput.focus();
     return;
   }
@@ -223,7 +300,7 @@ function saveInvoice() {
     const productId = tr.dataset.productId;
     const name = tr.children[1].innerText;
     const qty = parseInt(tr.querySelector(".qty").value) || 0;
-    const price = parseFloat(tr.children[3].innerText) || 0;
+    const price = parseFloat(tr.querySelector(".price").dataset.price) || 0;
     const img = tr.children[0].querySelector("img");
     const image_url = img ? img.src.replace("/static/", "") : null;
     items.push({ id: productId, name, qty, price, image_url });
@@ -234,28 +311,34 @@ function saveInvoice() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ customer_name: customerName, items })
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.error) return alert("❌ " + data.error);
-    alert("✅ Nota saved! ID: " + data.invoice_id);
-    document.getElementById("invoiceForm").reset();
-    document.getElementById("invoice-items").innerHTML = "";
-    document.getElementById("total").innerText = "0";
-    document.getElementById("search").dispatchEvent(new Event("input"));
-  })
-  .catch(err => {
-    console.error("Error:", err);
-    alert("❌ Failed to save invoice.");
-  });
+    .then(res => res.json())
+    .then(data => {
+      if (data.error) return alert("❌ " + data.error);
+      alert("✅ Nota berhasil disimpan! ID: " + data.invoice_id);
+      document.getElementById("invoiceForm").reset();
+      document.getElementById("invoice-items").innerHTML = "";
+      document.getElementById("total").innerText = "Rp 0";
+      document.getElementById("search").dispatchEvent(new Event("input"));
+    })
+    .catch(err => {
+      console.error("Error:", err);
+      alert("❌ Gagal menyimpan nota.");
+    });
 }
 
-// Prevent ENTER from submitting form
+// ✅ Prevent ENTER key
 document.getElementById("invoiceForm").addEventListener("keydown", e => {
   if (e.key === "Enter") e.preventDefault();
 });
 
-// Initial binding
 attachAddButtons();
+
+function showImage(src) {
+  const modalImg = document.getElementById("previewImage");
+  modalImg.src = src;
+  new bootstrap.Modal(document.getElementById("imgPreviewModal")).show();
+}
+
 </script>
 </body>
 {% endblock %}
