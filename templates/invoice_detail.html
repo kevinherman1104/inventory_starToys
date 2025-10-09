@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 {% extends "base.html" %}
 {% block content %}
 <head>
@@ -29,22 +29,22 @@
         <h1 class="mb-0">Nota #{{ invoice.id }}</h1>
         <div class="no-print">
             <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#editModal">✏️ Ubah</button>
-            <a href="{{ url_for('invoice_pdf', invoice_id=invoice.id) }}" class="btn btn-primary">⬇️ Download PDF</a>
-            <button onclick="window.print()" class="btn btn-success">🖨️ Print</button>
+            <a href="{{ url_for('invoice_pdf', invoice_id=invoice.id) }}" class="btn btn-primary">⬇️ Unduh PDF</a>
+            <button onclick="window.print()" class="btn btn-success">🖨️ Cetak</button>
             <button class="btn btn-danger" onclick="deleteInvoice('{{ invoice.id }}')">🗑️ Hapus</button>
-            <a href="{{ url_for('invoices') }}" class="btn btn-secondary">← Back to Daftar Nota</a>
+            <a href="{{ url_for('invoices') }}" class="btn btn-secondary">← Kembali ke Daftar Nota</a>
         </div>
     </div>
 
-    <!-- Info -->
-    <p><strong>Pelanggan:</strong> {{ invoice.customer_name }}</p>
-    <p><strong>Date:</strong> {{ invoice.created_at }}</p>
+    <!-- Informasi Nota -->
+    <p><strong>Nama Pelanggan:</strong> {{ invoice.customer_name }}</p>
+    <p><strong>Tanggal:</strong> {{ invoice.created_at }}</p>
 
-    <!-- Items Table -->
+    <!-- Tabel Item -->
     <table class="table table-bordered align-middle">
         <thead class="table-light">
             <tr>
-                <th>Image</th>
+                <th>Gambar</th>
                 <th>Produk</th>
                 <th>Jumlah</th>
                 <th>Harga</th>
@@ -56,28 +56,30 @@
             <tr>
                 <td>
                     {% if item.image_url %}
-                        <img src="{{ item.image_url }}" class="invoice-img" data-bs-toggle="modal"
-                             data-bs-target="#imgModal" onclick="showImage('{{ item.image_url }}')">
+                        <img src="{{ item.image_url }}" class="invoice-img"
+                             data-bs-toggle="modal"
+                             data-bs-target="#imgModal"
+                             onclick="showImage('{{ item.image_url }}')">
                     {% else %}
                         -
                     {% endif %}
                 </td>
                 <td>{{ item.name }}</td>
                 <td>{{ item.quantity }}</td>
-                <td>${{ "%.2f"|format(item.price) }}</td>
-                <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                <td>{{ item.price | rupiah }}</td>
+                <td>{{ item.subtotal | rupiah }}</td>
             </tr>
             {% endfor %}
         </tbody>
         <tfoot>
             <tr>
                 <th colspan="4" class="text-end">Total</th>
-                <th>${{ "%.2f"|format(total) }}</th>
+                <th>{{ total | rupiah }}</th>
             </tr>
         </tfoot>
     </table>
 
-    <!-- Image Preview Modal -->
+    <!-- Modal Pratinjau Gambar -->
     <div class="modal fade" id="imgModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content bg-transparent border-0 text-center">
@@ -86,7 +88,7 @@
         </div>
     </div>
 
-    <!-- Ubah Modal -->
+    <!-- Modal Ubah Nota -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -98,7 +100,7 @@
 
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label>Pelanggan Nama</label>
+                            <label>Nama Pelanggan</label>
                             <input type="text" class="form-control" name="customer_name"
                                    value="{{ invoice.customer_name }}">
                         </div>
@@ -106,12 +108,12 @@
                         <table class="table table-bordered align-middle">
                             <thead>
                                 <tr>
-                                    <th>Image</th>
+                                    <th>Gambar</th>
                                     <th>Produk</th>
-                                    <th>Quantity</th>
+                                    <th>Jumlah</th>
                                     <th>Harga</th>
                                     <th>Subtotal</th>
-                                    <th>Remove</th>
+                                    <th>Hapus</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -133,7 +135,7 @@
                                         <input type="number" name="price" class="form-control form-control-sm"
                                                value="{{ item.price }}" step="0.01">
                                     </td>
-                                    <td>${{ "%.2f"|format(item.subtotal) }}</td>
+                                    <td>{{ item.subtotal | rupiah }}</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-danger"
                                                 onclick="removeRow(this)">🗑️</button>
@@ -145,7 +147,7 @@
                     </div>
 
                     <div class="modal-footer">
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <button type="submit" class="btn btn-primary">💾 Simpan Perubahan</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     </div>
                 </form>
@@ -167,18 +169,16 @@ document.getElementById("editInvoiceForm").addEventListener("submit", async func
 
     const formData = new FormData(this);
     const invoiceId = "{{ invoice.id }}";
-
-    // 🧠 Check if all items are removed before sending to server
     const remainingItems = this.querySelectorAll('input[name="item_id"]').length;
 
+    // Konfirmasi jika semua item dihapus
     if (remainingItems === 0) {
         const confirmDelete = confirm(
-            "⚠️ You have removed all items.\nThis will permanently delete the entire invoice.\n\nAre you sure you want to proceed?"
+            "⚠️ Semua item telah dihapus.\nTindakan ini akan menghapus seluruh nota secara permanen.\n\nApakah Anda yakin ingin melanjutkan?"
         );
 
         if (!confirmDelete) {
-            alert("❌ Nota deletion canceled.");
-            // 🧭 Close the Ubah Nota modal
+            alert("❌ Penghapusan nota dibatalkan.");
             const modal = bootstrap.Modal.getInstance(document.getElementById("editModal"));
             if (modal) modal.hide();
             return;
@@ -190,30 +190,29 @@ document.getElementById("editInvoiceForm").addEventListener("submit", async func
             method: "POST",
             body: formData
         });
-
         const result = await response.json();
 
         if (result.error) {
             alert("❌ " + result.error);
         } else {
             alert("✅ " + result.message);
-
-            if (result.message.includes("deleted")) {
-                // Redirect to invoice list if invoice deleted
+            if (result.message.includes("dihapus")) {
                 window.location.href = "/invoices";
             } else {
                 location.reload();
             }
         }
     } catch (err) {
-        alert("❌ Network or server error: " + err);
+        alert("❌ Terjadi kesalahan jaringan atau server: " + err);
     }
-});
+}
 
+);
+
+// Hapus Nota
 async function deleteInvoice(id) {
-    const confirmDelete = confirm("🗑️ Apakah Anda yakin you want to permanently delete this invoice?");
+    const confirmDelete = confirm("🗑️ Apakah Anda yakin ingin menghapus nota ini secara permanen?");
     if (!confirmDelete) {
-        // 🧭 Also close modal if open
         const modal = bootstrap.Modal.getInstance(document.getElementById("editModal"));
         if (modal) modal.hide();
         return;
@@ -225,16 +224,16 @@ async function deleteInvoice(id) {
     if (result.error) {
         alert("❌ " + result.error);
     } else {
-        alert("✅ " + result.message);
+        alert("✅ Nota berhasil dihapus.");
         window.location.href = "/invoices";
     }
 }
 
-// 🧩 Reset the edit modal when it's closed, so next open is fresh
+// Reset modal setelah ditutup agar data diperbarui saat dibuka lagi
 const editModalEl = document.getElementById('editModal');
 if (editModalEl) {
     editModalEl.addEventListener('hidden.bs.modal', function () {
-        location.reload(); // ensures the form resets & fresh data next open
+        location.reload();
     });
 }
 </script>

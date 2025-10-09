@@ -321,11 +321,11 @@ def invoice_pdf(invoice_id):
     conn = get_connection()
     cursor = conn.cursor(dictionary=True)
 
-    # Fetch invoice header
+    # Ambil data faktur
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
     invoice = cursor.fetchone()
 
-    # Fetch invoice items
+    # Ambil item faktur
     cursor.execute("""
         SELECT ii.*, inv.name, inv.image_url 
         FROM invoice_items ii
@@ -335,86 +335,122 @@ def invoice_pdf(invoice_id):
     items = cursor.fetchall()
     conn.close()
 
-    # Create PDF buffer
+    # Buat PDF di memori
     buffer = io.BytesIO()
     p = canvas.Canvas(buffer, pagesize=letter)
     width, height = letter
-    margin = 50
-    y = height - 50
 
-    # Header
+    # ✅ Fungsi bantu: format ke Rupiah
+    def format_rupiah(value):
+        try:
+            value = float(value)
+            return "Rp {:,.0f}".format(value).replace(",", ".")
+        except (ValueError, TypeError):
+            return "Rp 0"
+
+    # ✅ Fungsi bantu: bungkus teks panjang
+    def wrap_text(text, max_width, font_name="Helvetica", font_size=12):
+        lines, words, current = [], text.split(), ""
+        for word in words:
+            test_line = (current + " " + word).strip()
+            if p.stringWidth(test_line, font_name, font_size) <= max_width:
+                current = test_line
+            else:
+                lines.append(current)
+                current = word
+        if current:
+            lines.append(current)
+        return lines
+
+    # Margin dan posisi kolom (lebih sempit untuk produk)
+    left_margin = 70
+    right_margin = 550
+    col_qty = left_margin
+    col_product = left_margin + 60
+    col_price = left_margin + 290     # lebih dekat ke kanan
+    col_subtotal = left_margin + 400  # diperlebar agar lebih lega
+    product_col_width = 180          # lebar kolom produk dipersempit
+
+    y = height - 70
     p.setFont("Helvetica-Bold", 16)
-    p.drawString(margin, y, f"Invoice #{invoice['id']}")
+    p.drawString(left_margin, y, f"Nota #{invoice['id']}")
+
     y -= 30
     p.setFont("Helvetica", 12)
-    p.drawString(margin, y, f"Customer: {invoice['customer_name']}")
+    p.drawString(left_margin, y, f"Nama Pelanggan : {invoice['customer_name']}")
     y -= 20
-    p.drawString(margin, y, f"Date: {invoice['created_at']}")
+    p.drawString(left_margin, y, f"Tanggal : {invoice['created_at']}")
+
+    # Header tabel
     y -= 40
-
-    # Table headers
     p.setFont("Helvetica-Bold", 12)
-    p.drawString(margin, y, "Qty")
-    p.drawString(margin + 40, y, "Product")
-    p.drawString(width - 170, y, "Price")
-    p.drawString(width - 90, y, "Subtotal")
-    y -= 20
-    p.line(margin, y, width - margin, y)
+    p.drawString(col_qty, y, "Jumlah")
+    p.drawString(col_product, y, "Produk")
+    p.drawString(col_price + 40, y, "Harga")
+    p.drawString(col_subtotal + 20, y, "Subtotal")
+
+    y -= 10
+    p.line(left_margin, y, right_margin, y)
     y -= 20
 
-    # Items
-    p.setFont("Helvetica", 11)
+    # Isi tabel
+    p.setFont("Helvetica", 12)
     total = 0
     for item in items:
-        if y < 80:  # Page break safety
-            p.showPage()
-            y = height - 50
-            p.setFont("Helvetica-Bold", 12)
-            p.drawString(margin, y, "Qty")
-            p.drawString(margin + 40, y, "Product")
-            p.drawString(width - 170, y, "Price")
-            p.drawString(width - 90, y, "Subtotal")
-            y -= 20
-            p.line(margin, y, width - margin, y)
-            y -= 20
-            p.setFont("Helvetica", 11)
-
         qty = str(item["quantity"])
-        name = item["name"] or "Unnamed"
-        price = f"${item['price']:.2f}"
-        subtotal = f"${item['subtotal']:.2f}"
-
-        # ✅ Truncate product name dynamically if too long
-        max_chars = 60  # Adjust depending on your font size / width
-        if len(name) > max_chars:
-            name = name[:max_chars - 3] + "..."
-
-        p.drawString(margin, y, qty)
-        p.drawString(margin + 40, y, name)
-        p.drawRightString(width - 100, y, price)
-        p.drawRightString(width - 40, y, subtotal)
-
+        price = format_rupiah(item["price"])
+        subtotal = format_rupiah(item["subtotal"])
         total += float(item["subtotal"])
-        y -= 20
+
+        # Bungkus nama produk
+        name_lines = wrap_text(item["name"], product_col_width, "Helvetica", 12)
+        line_height = 15
+
+        # Baris pertama
+        p.drawString(col_qty, y, qty)
+        p.drawString(col_product, y, name_lines[0])
+        p.drawRightString(col_price + 80, y, price)
+        p.drawRightString(right_margin, y, subtotal)
+        y -= line_height
+
+        # Baris tambahan untuk nama panjang
+        for line in name_lines[1:]:
+            p.drawString(col_product, y, line)
+            y -= line_height
+
+        # Jika halaman penuh → lanjut halaman baru
+        if y < 100:
+            p.showPage()
+            y = height - 70
+            p.setFont("Helvetica-Bold", 12)
+            p.drawString(col_qty, y, "Jumlah")
+            p.drawString(col_product, y, "Produk")
+            p.drawString(col_price + 40, y, "Harga")
+            p.drawString(col_subtotal + 20, y, "Subtotal")
+            y -= 10
+            p.line(left_margin, y, right_margin, y)
+            y -= 20
+            p.setFont("Helvetica", 12)
 
     # Total
-    y -= 20
+    y -= 10
+    p.line(left_margin, y, right_margin, y)
+    y -= 25
     p.setFont("Helvetica-Bold", 12)
-    p.drawRightString(width - 100, y, "TOTAL:")
-    p.drawRightString(width - 40, y, f"${total:.2f}")
-    
+    p.drawRightString(col_price + 80, y, "TOTAL :")
+    p.drawRightString(right_margin, y, format_rupiah(total))
 
-    # Finalize PDF
     p.showPage()
     p.save()
-    buffer.seek(0)
 
+    buffer.seek(0)
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=f"invoice_{invoice['id']}.pdf",
+        download_name=f"nota_{invoice['id']}.pdf",
         mimetype="application/pdf"
     )
+
 # ======================================================
 # ✏️ EDIT PRODUCT
 # ======================================================
@@ -468,6 +504,17 @@ def edit(item_id):
     conn.close()
 
     return render_template("edit.html", item=item)
+
+
+# ✅ Format numbers as Rupiah
+def format_rupiah(amount):
+    try:
+        amount = float(amount)
+        return "Rp {:,.0f}".format(amount).replace(",", ".")
+    except (ValueError, TypeError):
+        return "Rp 0"
+
+app.jinja_env.filters["rupiah"] = format_rupiah
 
 
 if __name__ == "__main__":

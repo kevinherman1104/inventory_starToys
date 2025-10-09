@@ -40,9 +40,9 @@
         <th>Stok</th>
         <th>Status</th>
         <th>Pemasok</th>
-        <th>Biaya</th>
-        <th>Harga</th>
-        <th>Image</th>
+        <th>Harga Foto</th>
+        <th>Harga Jual</th>
+        <th>Gambar</th>
         <th>Tindakan</th>
       </tr>
     </thead>
@@ -64,8 +64,8 @@
         </td>
 
         <td>{{ row.supplier }}</td>
-        <td>{{ row.cost_price }}</td>
-        <td>{{ row.selling_price }}</td>
+        <td>{{ row.cost_price | rupiah}}</td>
+        <td>{{ row.selling_price | rupiah}}</td>
 
         <td>
           {% if row.image_url %}
@@ -83,8 +83,8 @@
                   data-name="{{ row.name }}"
                   data-stock="{{ row.stock }}"
                   data-supplier="{{ row.supplier }}"
-                  data-cost="{{ row.cost_price }}"
-                  data-price="{{ row.selling_price }}"
+                  data-cost="{{ row.cost_price | rupiah}}"
+                  data-price="{{ row.selling_price | rupiah}}"
                   data-image="{{ row.image_url }}"
                   data-bs-toggle="modal" data-bs-target="#editModal">
             Ubah

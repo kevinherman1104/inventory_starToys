@@ -35,7 +35,7 @@
           <td>{{ row.product_id }}</td>
           <td>{{ row.name }}</td>
           <td>{{ row.stock }}</td>
-          <td>{{ row.selling_price }}</td>
+          <td>{{ row.selling_price | rupiah}}</td>
           <td>
             {% if row.image_url %}
               <img src="{{ row.image_url }}"
@@ -58,7 +58,7 @@
             <button class="btn btn-success btn-sm add-btn"
                     data-id="{{ row.id }}"
                     data-name="{{ row.name }}"
-                    data-price="{{ row.selling_price }}"
+                    data-price="{{ row.selling_price | rupiah}}"
                     data-image="{{ row.image_url|default('', true) }}">
               Tambah
             </button>
@@ -117,13 +117,13 @@ document.getElementById("search").addEventListener("input", async function () {
         <td>${row.product_id}</td>
         <td>${row.name}</td>
         <td>${row.stock}</td>
-        <td>${row.selling_price}</td>
+        <td>${row.selling_price | rupiah}</td>
         <td>${imgTag}</td>
         <td>
           <button class="btn btn-success btn-sm add-btn"
                   data-id="${row.id}"
                   data-name="${row.name}"
-                  data-price="${row.selling_price}"
+                  data-price="${row.selling_price | rupiah}"
                   data-image="${row.image_url || ''}">
             Tambah
           </button>
@@ -162,8 +162,8 @@ function addToInvoice(row) {
     <td>${imgTag}</td>
     <td>${row.name}</td>
     <td><input type="number" value="1" min="1" class="form-control qty" style="width:80px"></td>
-    <td class="price">${row.selling_price}</td>
-    <td class="subtotal">${row.selling_price}</td>
+    <td class="price">${row.selling_price | rupiah} </td>
+    <td class="subtotal">${row.selling_price | rupiah}</td>
     <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove(); updateTotal()">X</button></td>
   `;
 
@@ -173,7 +173,7 @@ function addToInvoice(row) {
   tr.querySelector(".qty").addEventListener("input", function () {
     const qty = parseInt(this.value) || 0;
     const price = parseFloat(row.selling_price);
-    tr.querySelector(".subtotal").innerText = (qty * price).toFixed(2);
+   tr.querySelector(".subtotal").innerText = formatRupiah(qty * price);
     updateTotal();
   });
 }
@@ -194,14 +194,14 @@ function attachAddButtons() {
 }
 
 // ✅ Update total
+// Update total function
 function updateTotal() {
-  let total = 0;
-  document.querySelectorAll("#invoice-items .subtotal").forEach(el => {
-    total += parseFloat(el.innerText) || 0;
-  });
-  document.getElementById("total").innerText = total.toFixed(2);
+    let total = 0;
+    document.querySelectorAll("#invoice-items .subtotal").forEach(el => {
+        total += parseFloat(el.innerText.replace(/[^\d.-]/g, '')) || 0;
+    });
+    document.getElementById("total").innerText = formatRupiah(total);
 }
-
 // ✅ Save invoice
 function saveInvoice() {
   const customerInput = document.querySelector("[name='customer_name']");
