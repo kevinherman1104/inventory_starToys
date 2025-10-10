@@ -531,6 +531,20 @@ def format_rupiah(amount):
 
 app.jinja_env.filters["rupiah"] = format_rupiah
 
+@app.route("/check_product_id/<product_id>")
+def check_product_id(product_id):
+    """Check if product_id already exists in inventory."""
+    conn = get_connection()
+    cursor = conn.cursor(dictionary=True)
+    cursor.execute("SELECT id, product_id, name FROM inventory WHERE product_id = %s", (product_id,))
+    existing = cursor.fetchone()
+    conn.close()
+
+    if existing:
+        return jsonify({"exists": True, "name": existing["name"], "id": existing["id"]})
+    else:
+        return jsonify({"exists": False})
+
 
 if __name__ == "__main__":
     if not os.path.exists(UPLOAD_FOLDER):
