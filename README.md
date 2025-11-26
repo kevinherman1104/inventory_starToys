@@ -1,41 +1,68 @@
-Inventory Management System
+# Star Toys Inventory Management System
 
-A simple web based inventory and invoicing application built with Flask and MySQL.
-This project was originally created to manage the stock and sales workflow for a small toy store in Indonesia. It supports product management, invoice generation, and PDF exports.
+A full stack inventory and invoicing application built with Flask and MySQL.  
+Designed as a lightweight retail management system for a small toy store, this project demonstrates CRUD operations, server side rendering, PDF generation, relational database modeling, and file handling.
 
-Features
-Inventory Management
+## Key Highlights
 
-• Add, edit, and delete products
-• Track stock, cost price, and selling price
-• Store product category and supplier information
-• Search products dynamically without reloading the page
+- End to end inventory and sales workflow  
+- Clean separation between views, routes, and database logic  
+- Dynamic search using AJAX  
+- PDF invoice generation using ReportLab  
+- Image upload with validation and secure storage  
+- Relational schema design for transactional systems  
+- Full CRUD for inventory and invoice modules  
 
-Invoice Module
+## Architecture
 
-• Create invoices with multiple line items
-• Store customer name and timestamp
-• Edit invoices and add or remove items
-• Automatically calculate subtotal and total
-• Export invoice as PDF
+The application follows a simplified MVC inspired structure.
 
-File Upload
+### Model  
+Database interactions using MySQL Connector.
 
-• Support for product image uploads (PNG, JPG, JPEG, GIF)
-• Secure filename handling with Werkzeug
-• Automatic storage into static folder
+### View  
+Jinja2 templates with vanilla JavaScript.
 
-Database
+### Controller  
+Flask routes that coordinate inventory and invoice logic.
 
-The app uses MySQL with three main tables:
-• Inventory
-• Invoices
-• Invoice items
+## Tech Stack
 
-Technology Stack
+**Backend**  
+- Python  
+- Flask  
+- MySQL Connector  
+- ReportLab  
+- Pillow  
 
-• Python
-• Flask
-• MySQL
-• HTML, CSS, JavaScript
-• ReportLab for PDF generation
+**Frontend**  
+- HTML  
+- CSS  
+- JavaScript  
+- Jinja2  
+
+**Database**  
+- MySQL  
+- Relational transactional schema  
+- Foreign key constraints  
+
+## Features
+
+### Inventory Module
+- Add, update, delete products  
+- Track stock, supplier, cost price, selling price  
+- Product image upload support  
+- Real time search using asynchronous requests  
+
+### Invoice Module
+- Create invoice with multiple items  
+- Update or remove items in existing invoices  
+- Automatic subtotal and total calculation  
+- Export invoice as PDF  
+- Persistent invoice history  
+
+### File Upload Handling
+- Secure file naming  
+- Allowed extension validation  
+- Stored under static uploads  
+
