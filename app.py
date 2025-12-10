@@ -8,6 +8,8 @@ from reportlab.pdfgen import canvas
 import io
 import psycopg2
 import psycopg2.extras
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
@@ -40,12 +42,13 @@ def process_image(file, filename):
 #         port=int(os.getenv("DB_PORT", 3306))
 #     )
 def get_connection():
-    # Ambil connection string dari env
-    database_url = os.getenv("postgresql://neondb_owner:npg_pXIAzFe4M9YV@ep-red-bird-agl3jy10-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
+    # Ambil connection string dari ENV
+    database_url = os.getenv("DATABASE_URL")
+
     if not database_url:
         raise RuntimeError("DATABASE_URL is not set")
-    return psycopg2.connect(database_url)
 
+    return psycopg2.connect(database_url)
 
 # -------------------- INVENTORY --------------------
 @app.route("/", methods=["GET"])
