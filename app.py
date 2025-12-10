@@ -41,7 +41,7 @@ def process_image(file, filename):
 #     )
 def get_connection():
     # Ambil connection string dari env
-    database_url = os.getenv("psql 'postgresql://neondb_owner:npg_pXIAzFe4M9YV@ep-red-bird-agl3jy10-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'")
+    database_url = os.getenv("postgresql://neondb_owner:npg_pXIAzFe4M9YV@ep-red-bird-agl3jy10-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
     if not database_url:
         raise RuntimeError("DATABASE_URL is not set")
     return psycopg2.connect(database_url)
