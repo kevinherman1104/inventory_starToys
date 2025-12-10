@@ -29,14 +29,6 @@ def process_image(file, filename):
     return f"/static/uploads/{filename}"
 
 
-# def get_connection():
-#     # return mysql.connector.connect(
-#     #     host=os.environ.get("MYSQLHOST", "localhost"),
-#     #     user=os.environ.get("MYSQLUSER", "root"),
-#     #     password=os.environ.get("MYSQLPASSWORD", "Nicholas1105!"),
-#     #     database=os.environ.get("MYSQLDATABASE", "inventory_db"),
-#     #     port=3306
-#     # )
 def get_connection():
     return mysql.connector.connect(
         host=os.getenv("DB_HOST", "localhost"),
