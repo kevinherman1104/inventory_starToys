@@ -3,3 +3,5 @@ gunicorn
 mysql-connector-python
 pillow
 reportlab
+psycopg2-binary
+python-dotenv
