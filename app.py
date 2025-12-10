@@ -31,10 +31,10 @@ def process_image(file, filename):
 
 def get_connection():
     return mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", "Nicholas1105!"),
-        database=os.getenv("DB_NAME", "inventory_db"),
+        host=os.getenv("DB_HOST", "bcsolg7pi6d698csav0i-mysql.services.clever-cloud.com"),
+        user=os.getenv("DB_USER", "urftros8lawuanwg"),
+        password=os.getenv("DB_PASSWORD", "Z7W5qma7ai2bM5mGbjp4!"),
+        database=os.getenv("DB_NAME", "bcsolg7pi6d698csav0i"),
         port=int(os.getenv("DB_PORT", 3306))
     )
 
