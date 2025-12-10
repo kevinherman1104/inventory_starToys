@@ -29,15 +29,22 @@ def process_image(file, filename):
     return f"/static/uploads/{filename}"
 
 
+# def get_connection():
+#     # return mysql.connector.connect(
+#     #     host=os.environ.get("MYSQLHOST", "localhost"),
+#     #     user=os.environ.get("MYSQLUSER", "root"),
+#     #     password=os.environ.get("MYSQLPASSWORD", "Nicholas1105!"),
+#     #     database=os.environ.get("MYSQLDATABASE", "inventory_db"),
+#     #     port=3306
+#     # )
 def get_connection():
     return mysql.connector.connect(
-        host=os.environ.get("MYSQLHOST", "mysql-startoys.alwaysdata.net"),
-        user=os.environ.get("MYSQLUSER", "startoys"),
-        password=os.environ.get("MYSQLPASSWORD", "Nicholas1105"),
-        database=os.environ.get("MYSQLDATABASE", "startoys_db"),
-        port=3306
+        host=os.getenv("DB_HOST", "localhost"),
+        user=os.getenv("DB_USER", "root"),
+        password=os.getenv("DB_PASSWORD", "Nicholas1105!"),
+        database=os.getenv("DB_NAME", "inventory_db"),
+        port=int(os.getenv("DB_PORT", 3306))
     )
-
 
 # -------------------- INVENTORY --------------------
 @app.route("/", methods=["GET"])
