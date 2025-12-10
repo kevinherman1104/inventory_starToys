@@ -6,6 +6,8 @@ from PIL import Image
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import io
+import psycopg2
+import psycopg2.extras
 
 app = Flask(__name__)
 app.secret_key = "your_secret_key"
@@ -29,21 +31,28 @@ def process_image(file, filename):
     return f"/static/uploads/{filename}"
 
 
+# def get_connection():
+#     return mysql.connector.connect(
+#         host=os.getenv("DB_HOST", "localhost"),
+#         user=os.getenv("DB_USER", "root"),
+#         password=os.getenv("DB_PASSWORD", "Nicholas1105!"),
+#         database=os.getenv("DB_NAME", "inventory_db"),
+#         port=int(os.getenv("DB_PORT", 3306))
+#     )
 def get_connection():
-    return mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", "Nicholas1105!"),
-        database=os.getenv("DB_NAME", "inventory_db"),
-        port=int(os.getenv("DB_PORT", 3306))
-    )
+    # Ambil connection string dari env
+    database_url = os.getenv("psql 'postgresql://neondb_owner:npg_pXIAzFe4M9YV@ep-red-bird-agl3jy10-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not set")
+    return psycopg2.connect(database_url)
+
 
 # -------------------- INVENTORY --------------------
 @app.route("/", methods=["GET"])
 def home():
     search_term = request.args.get("q", "").strip()
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     if search_term:
         like = f"%{search_term}%"
         cursor.execute("""
@@ -108,7 +117,7 @@ def invoice():
     search_term = request.args.get("q", "").strip()
 
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if search_term:
         like = f"%{search_term}%"
@@ -159,7 +168,7 @@ def save_invoice():
             return jsonify({"error": "No items to save."}), 400
 
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         cursor.execute("INSERT INTO invoices (customer_name) VALUES (%s)", (customer_name,))
         invoice_id = cursor.lastrowid
@@ -198,7 +207,7 @@ def save_invoice():
 @app.route("/invoices")
 def invoices():
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("""
         SELECT i.id, i.customer_name, i.created_at, SUM(ii.subtotal) AS total
         FROM invoices i
@@ -215,7 +224,7 @@ def invoices():
 @app.route("/invoice/<int:invoice_id>")
 def invoice_detail(invoice_id):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
     invoice = cursor.fetchone()
     cursor.execute("""
@@ -235,7 +244,7 @@ def invoice_detail(invoice_id):
 def invoice_delete(invoice_id):
     try:
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cursor.execute("SELECT product_id, quantity FROM invoice_items WHERE invoice_id=%s", (invoice_id,))
         items = cursor.fetchall()
         for it in items:
@@ -255,7 +264,7 @@ def invoice_delete(invoice_id):
 def invoice_edit_modal(invoice_id):
     try:
         conn = get_connection()
-        cursor = conn.cursor(dictionary=True)
+        cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         # 🔹 Update customer name
         customer_name = request.form.get("customer_name")
@@ -333,7 +342,7 @@ def invoice_edit_modal(invoice_id):
 @app.route("/invoice/<int:invoice_id>/pdf")
 def invoice_pdf(invoice_id):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     # Ambil data faktur
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
@@ -471,7 +480,7 @@ def invoice_pdf(invoice_id):
 @app.route("/edit/<int:item_id>", methods=["GET", "POST"])
 def edit(item_id):
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     if request.method == "POST":
         try:
@@ -534,7 +543,7 @@ app.jinja_env.filters["rupiah"] = format_rupiah
 def check_product_id(product_id):
     """Check if product_id already exists in inventory."""
     conn = get_connection()
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cursor.execute("SELECT id, product_id, name FROM inventory WHERE product_id = %s", (product_id,))
     existing = cursor.fetchone()
     conn.close()
