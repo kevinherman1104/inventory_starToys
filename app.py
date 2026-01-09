@@ -56,6 +56,7 @@ def home():
     search_term = request.args.get("q", "").strip()
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    # #cursor = conn.cursor(dictionary=True)
     if search_term:
         like = f"%{search_term}%"
         cursor.execute("""
@@ -121,7 +122,7 @@ def invoice():
 
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
+    #cursor = conn.cursor(dictionary=True)
     if search_term:
         like = f"%{search_term}%"
         cursor.execute("""
@@ -159,51 +160,125 @@ def invoice():
 
 
 
+# @app.route("/save_invoice", methods=["POST"])
+# def save_invoice():
+#     try:
+#         data = request.get_json(force=True)
+#         customer_name = (data.get("customer_name") or "").strip()
+#         items = data.get("items", [])
+#         if not customer_name:
+#             return jsonify({"error": "Customer name is required."}), 400
+#         if not items:
+#             return jsonify({"error": "No items to save."}), 400
+
+#         conn = get_connection()
+#         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+#         #cursor = conn.cursor(dictionary=True)
+
+#         cursor.execute("INSERT INTO invoices (customer_name) VALUES (%s)", (customer_name,))
+#         invoice_id = cursor.lastrowid
+
+#         for item in items:
+#             product_id = item.get("id")
+#             qty = int(item.get("qty", 0))
+#             price = float(item.get("price", 0))
+#             subtotal = qty * price
+
+#             cursor.execute("""
+#                 INSERT INTO invoice_items (invoice_id, product_id, quantity, price, subtotal)
+#                 VALUES (%s, %s, %s, %s, %s)
+#             """, (invoice_id, product_id, qty, price, subtotal))
+
+#             cursor.execute("""
+#                 UPDATE inventory SET stock = stock - %s WHERE id = %s AND stock >= %s
+#             """, (qty, product_id, qty))
+#             if cursor.rowcount == 0:
+#                 conn.rollback()
+#                 cursor.execute("SELECT name, stock FROM inventory WHERE id=%s", (product_id,))
+#                 p = cursor.fetchone()
+#                 return jsonify({"error": f"Not enough stock for {p['name']} (Stock: {p['stock']})."}), 400
+
+#         conn.commit()
+#         return jsonify({"message": "Invoice created", "invoice_id": invoice_id}), 200
+
+#     except Exception as e:
+#         if 'conn' in locals(): conn.rollback()
+#         return jsonify({"error": str(e)}), 500
+#     finally:
+#         if 'conn' in locals() and conn.is_connected(): conn.close()
+
 @app.route("/save_invoice", methods=["POST"])
 def save_invoice():
+    conn = None
     try:
-        data = request.get_json(force=True)
+        data = request.get_json(silent=True) or {}
         customer_name = (data.get("customer_name") or "").strip()
-        items = data.get("items", [])
+        items = data.get("items") or []
+
         if not customer_name:
             return jsonify({"error": "Customer name is required."}), 400
         if not items:
             return jsonify({"error": "No items to save."}), 400
 
-        conn = get_connection()
+        conn = get_connection()  # ini harus return psycopg2 connection (Neon)
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        cursor.execute("INSERT INTO invoices (customer_name) VALUES (%s)", (customer_name,))
-        invoice_id = cursor.lastrowid
+        # Create invoice header, ambil id dengan RETURNING
+        cursor.execute(
+            "INSERT INTO invoices (customer_name) VALUES (%s) RETURNING id",
+            (customer_name,)
+        )
+        invoice_id = cursor.fetchone()["id"]
 
         for item in items:
             product_id = item.get("id")
             qty = int(item.get("qty", 0))
             price = float(item.get("price", 0))
-            subtotal = qty * price
 
-            cursor.execute("""
+            if not product_id or qty <= 0:
+                conn.rollback()
+                return jsonify({"error": "Invalid item payload (id/qty)."}), 400
+
+            # Decrease stock atomically
+            cursor.execute(
+                "UPDATE inventory SET stock = stock - %s WHERE id = %s AND stock >= %s",
+                (qty, product_id, qty)
+            )
+
+            if cursor.rowcount == 0:
+                cursor.execute(
+                    "SELECT name, stock FROM inventory WHERE id = %s",
+                    (product_id,)
+                )
+                p = cursor.fetchone()
+                conn.rollback()
+
+                if not p:
+                    return jsonify({"error": f"Product not found (id: {product_id})."}), 400
+
+                return jsonify({"error": f"Not enough stock for {p['name']} (Stock: {p['stock']})."}), 400
+
+            subtotal = qty * price
+            cursor.execute(
+                """
                 INSERT INTO invoice_items (invoice_id, product_id, quantity, price, subtotal)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (invoice_id, product_id, qty, price, subtotal))
-
-            cursor.execute("""
-                UPDATE inventory SET stock = stock - %s WHERE id = %s AND stock >= %s
-            """, (qty, product_id, qty))
-            if cursor.rowcount == 0:
-                conn.rollback()
-                cursor.execute("SELECT name, stock FROM inventory WHERE id=%s", (product_id,))
-                p = cursor.fetchone()
-                return jsonify({"error": f"Not enough stock for {p['name']} (Stock: {p['stock']})."}), 400
+                """,
+                (invoice_id, product_id, qty, price, subtotal)
+            )
 
         conn.commit()
         return jsonify({"message": "Invoice created", "invoice_id": invoice_id}), 200
 
     except Exception as e:
-        if 'conn' in locals(): conn.rollback()
+        if conn:
+            conn.rollback()
         return jsonify({"error": str(e)}), 500
+
     finally:
-        if 'conn' in locals() and conn.is_connected(): conn.close()
+        if conn and not conn.closed:
+            conn.close()
+
 
 
 # -------------------- INVOICES LIST --------------------
@@ -211,6 +286,7 @@ def save_invoice():
 def invoices():
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    #cursor = conn.cursor(dictionary=True)
     cursor.execute("""
         SELECT i.id, i.customer_name, i.created_at, SUM(ii.subtotal) AS total
         FROM invoices i
@@ -228,6 +304,7 @@ def invoices():
 def invoice_detail(invoice_id):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    #cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
     invoice = cursor.fetchone()
     cursor.execute("""
@@ -248,6 +325,7 @@ def invoice_delete(invoice_id):
     try:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        #cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT product_id, quantity FROM invoice_items WHERE invoice_id=%s", (invoice_id,))
         items = cursor.fetchall()
         for it in items:
@@ -268,6 +346,7 @@ def invoice_edit_modal(invoice_id):
     try:
         conn = get_connection()
         cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        #cursor = conn.cursor(dictionary=True)
 
         # 🔹 Update customer name
         customer_name = request.form.get("customer_name")
@@ -346,6 +425,7 @@ def invoice_edit_modal(invoice_id):
 def invoice_pdf(invoice_id):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    #cursor = conn.cursor(dictionary=True)
 
     # Ambil data faktur
     cursor.execute("SELECT * FROM invoices WHERE id=%s", (invoice_id,))
@@ -484,6 +564,7 @@ def invoice_pdf(invoice_id):
 def edit(item_id):
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    #cursor = conn.cursor(dictionary=True)
 
     if request.method == "POST":
         try:
@@ -547,6 +628,7 @@ def check_product_id(product_id):
     """Check if product_id already exists in inventory."""
     conn = get_connection()
     cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    #cursor = conn.cursor(dictionary=True)
     cursor.execute("SELECT id, product_id, name FROM inventory WHERE product_id = %s", (product_id,))
     existing = cursor.fetchone()
     conn.close()
