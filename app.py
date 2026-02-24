@@ -8,6 +8,8 @@ from reportlab.pdfgen import canvas
 import io
 import psycopg2
 import psycopg2.extras
+from encryption_schemes import aesgcm_encrypt, chacha_encrypt
+import os, base64
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -644,6 +646,39 @@ if __name__ == "__main__":
         os.makedirs(UPLOAD_FOLDER)
     app.run(debug=True)
 
+AES_KEY = base64.b64decode(os.getenv("APP_AES_KEY_B64", ""))
+CHACHA_KEY = base64.b64decode(os.getenv("APP_CHACHA_KEY_B64", ""))
 
+if len(AES_KEY) != 32 or len(CHACHA_KEY) != 32:
+    raise RuntimeError("Missing or invalid APP_AES_KEY_B64 / APP_CHACHA_KEY_B64 (must be 32 bytes base64).")
 
+print("AES key bytes:", len(AES_KEY), "ChaCha key bytes:", len(CHACHA_KEY))
 
+# # Encryption
+# AES_KEY = os.getenv("APP_AES_KEY", os.urandom(32))
+# CHACHA_KEY = os.getenv("APP_CHACHA_KEY", os.urandom(32))
+
+# @app.route("/store_secret/<scheme>")
+# def store_secret(scheme):
+#     secret = "this is very secret value"
+
+#     conn = get_connection()
+#     cur = conn.cursor()
+
+#     if scheme == "aes":
+#         nonce, ct = aesgcm_encrypt(AES_KEY, secret.encode())
+#         scheme_name = "AES-GCM"
+#     elif scheme == "chacha":
+#         nonce, ct = chacha_encrypt(CHACHA_KEY, secret.encode())
+#         scheme_name = "ChaCha20-Poly1305"
+#     else:
+#         return "Unknown scheme", 400
+
+#     cur.execute(
+#         "INSERT INTO secure_items (scheme, nonce, ciphertext) VALUES (%s, %s, %s)",
+#         (scheme_name, nonce, ct),
+#     )
+#     conn.commit()
+#     cur.close()
+#     conn.close()
+#     return f"Stored using {scheme_name}"

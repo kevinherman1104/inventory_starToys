@@ -5,3 +5,5 @@ pillow
 reportlab
 psycopg2-binary
 python-dotenv
+cryptography
+psutil        # for measuring CPU / memory
