@@ -141,6 +141,9 @@ def main():
     # Print final summary for easy copy from logs
     for r in rows:
         print(r["env"], r["scheme"], r["payload_bytes"], f'avg_ms={r["avg_ms"]:.6f}', f'ops/s={r["ops_per_s"]:.1f}', f'bytes/s={r["bytes_per_s"]:.1f}')
-
+        
+    print("\n=== BENCHMARK COMPLETE ===")
+with open(OUT_CSV, "r") as f:
+    print(f.read())
 if __name__ == "__main__":
     main()
