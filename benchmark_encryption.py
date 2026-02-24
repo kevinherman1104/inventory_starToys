@@ -7,6 +7,13 @@ from encryption_schemes import (
     chacha_encrypt, chacha_decrypt,
 )
 
+import platform
+import os
+
+print("Platform:", platform.platform())
+print("Processor:", platform.processor())
+print("Python version:", platform.python_version())
+
 def run_once(name, enc, dec, key, payload: bytes, n_ops: int) -> dict:
     t0 = time.perf_counter()
     for _ in range(n_ops):
